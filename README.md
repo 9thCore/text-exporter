@@ -10,6 +10,10 @@ Made using LÖVE.
 - Custom font support (though rendering may be a bit wack as I've only tested with the default font)
 - Custom font size (1-96)
 - Word horizontal alignment
+- Syllable support with `/`
+- Vertical text with `\n`
+- Spaces inside words with `\ ​`
+  - Example: `this\nis\ vertical\ntext` will be exported as `this is vertical text`, with `this`, `is vertical` and `text` being on different lines. Nifty!
 
 ## Usage
 - Compile the source or use the release executable provided.
