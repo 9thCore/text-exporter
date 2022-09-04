@@ -682,9 +682,9 @@ function love.load(args)
 							local t = {}
 							local lasti = 1
 							for i = 1, #w do
-								if w:sub(i+1, i+2) == '\\n' then
-									t[#t+1] = w:sub(lasti, i)
-									lasti = i + 3
+								if w:sub(i, i+1) == '\\n' then
+									t[#t+1] = w:sub(lasti, i-1)
+									lasti = i + 2
 								end
 							end
 							t[#t+1] = w:sub(lasti, -1)
@@ -825,8 +825,8 @@ function love.load(args)
 					print('Starting with ' .. #words .. ' words...')
 
 					print('Removing old words...')
-					love.filesystem.createDirectory('output')
 
+					love.filesystem.createDirectory('output')
 					local files = love.filesystem.getDirectoryItems('output')
 					for _,f in ipairs(files) do
 						love.filesystem.remove('output/'..f)
@@ -889,7 +889,8 @@ function love.load(args)
 
 							love.graphics.clear()
 
-							local allWords = mysplit(word, '\n')
+							local allWords = mysplit('_' .. word, '\n')
+							allWords[1] = allWords[1]:sub(2, -1)
 
 							for i,thisword in ipairs(allWords) do
 								drawTextWithOutline(thisword, preview.font, (w - preview.font:getWidth(thisword) - xPad*2 - 2) * wordAlign, (i-1) * preview.font:getHeight())
@@ -965,7 +966,8 @@ function love.load(args)
 						local x, y, frame = 1, 1, 0
 						for _, wordWithNewlines in ipairs(uniquewords) do
 
-							local allWords = mysplit(wordWithNewlines, '\n')
+							local allWords = mysplit('_' .. wordWithNewlines, '\n')
+							allWords[1] = allWords[1]:sub(2, -1)
 
 							for i,w in ipairs(allWords) do
 
