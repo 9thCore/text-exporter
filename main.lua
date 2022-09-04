@@ -989,7 +989,7 @@ function love.load(args)
 
 							-- save expression
 							jsonT.clips[#jsonT.clips+1] = {
-								name = w,
+								name = wordWithNewlines:gsub('%s+', '_'),
 								frames = {frame}, 
 								loop = 'onBeat', 
 								fps = 0, 
