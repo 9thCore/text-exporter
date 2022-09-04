@@ -16,7 +16,7 @@ https://github.com/rxi/json.lua
 
 ]]
 
-_EXPORTERVERSION = '1.0'
+_EXPORTERVERSION = '1.1'
 
 -- variables
 min = math.min
@@ -42,6 +42,7 @@ dropShadowColor = {1, 0, 0, 0}
 
 words = {} -- stores the words from the lyrics
 uniquewords = {} -- stores unique words only
+escaped_space_str = '_originallyescapedspace_terriblecode_woo_noedgecasesright__fuck_' -- i sure do hope this doesnt cause issues
 
 camera = {
 	x = 0, -- pos
@@ -281,14 +282,14 @@ objects = {}
 
 -- https://stackoverflow.com/questions/1426954/split-string-in-lua
 function mysplit (inputstr, sep)
-        if sep == nil then
-                sep = "%s"
-        end
-        local t={}
-        for str in string.gmatch(inputstr, "([^"..sep.."]+)") do
-                table.insert(t, str)
-        end
-        return t
+    if sep == nil then
+        sep = "%s"
+    end
+    local t={}
+    for str in string.gmatch(inputstr, "([^"..sep.."]+)") do
+        table.insert(t, str)
+    end
+    return t
 end
 
 function clamp(v,minv,maxv) return math.max(math.min(v, maxv), minv) end
@@ -670,9 +671,40 @@ function love.load(args)
 
 				if contents then
 
-					for w in contents:gmatch("%S+") do
+					local contents_minus_escaped_spaces = contents:gsub('\\ ', escaped_space_str)
 
-						if w:find('/') then
+					for w in contents_minus_escaped_spaces:gmatch("%S+") do
+
+						w = w:gsub(escaped_space_str, ' ')
+
+						if w:find('\\n') then
+
+							local t = {}
+							local lasti = 1
+							for i = 1, #w do
+								if w:sub(i+1, i+2) == '\\n' then
+									t[#t+1] = w:sub(lasti, i)
+									lasti = i + 3
+								end
+							end
+							t[#t+1] = w:sub(lasti, -1)
+
+							final = table.concat(t, '\n')
+
+							words[#words+1] = final
+							
+							local found = false
+							for _,w in ipairs(uniquewords) do
+								if w == final then
+									found = true
+									break
+								end
+							end
+							if not found then
+								uniquewords[#uniquewords+1] = final
+							end
+
+						elseif w:find('/') then
 
 							local t = mysplit(w, '/')
 
@@ -845,8 +877,11 @@ function love.load(args)
 							-- draw word
 							local word = words[i]
 
+							local _, newlinecount = word:gsub('\n', '\n') -- magic
+							newlinecount = newlinecount + 1
+
 							local w = preview.font:getWidth(word) + outlineOffset + xPad*2 + math.abs(shadowX)
-							local h = preview.font:getHeight() - preview.font:getDescent() + 1 + math.abs(shadowY)
+							local h = preview.font:getHeight() * newlinecount - preview.font:getDescent() + 1 + math.abs(shadowY)
 
 							local canvas = love.graphics.newCanvas(w, h)
 
@@ -854,7 +889,11 @@ function love.load(args)
 
 							love.graphics.clear()
 
-							drawTextWithOutline(word, preview.font, 0, 0)
+							local allWords = mysplit(word, '\n')
+
+							for i,thisword in ipairs(allWords) do
+								drawTextWithOutline(thisword, preview.font, (w - preview.font:getWidth(thisword) - xPad*2 - 2) * wordAlign, (i-1) * preview.font:getHeight())
+							end
 
 							love.graphics.setCanvas()
 
@@ -871,11 +910,16 @@ function love.load(args)
 						-- calculate max width
 						local wordcount = #uniquewords
 						local wordwidth = 0
-						local wordheight = preview.font:getHeight() - preview.font:getDescent() + 1 + math.abs(shadowY)
+						local wordheight = 0
 
 						for _,w in ipairs(uniquewords) do
 
 							wordwidth = math.max(wordwidth, preview.font:getWidth(w))
+
+							local _, newlinecount = w:gsub('\n', '\n') -- magic
+							newlinecount = newlinecount + 1
+
+							wordheight = math.max(wordheight, preview.font:getHeight() * newlinecount - preview.font:getDescent() + 1 + math.abs(shadowY))
 
 						end
 
@@ -883,11 +927,9 @@ function love.load(args)
 
 						-- try to make the spritesheet as square as possible to avoid any potential issues
 						local sqrt = math.sqrt(wordcount)
-						local nextPerfectSquare = math.ceil(sqrt)*math.ceil(sqrt)
 
-						local columns = math.sqrt(nextPerfectSquare)
-						local lines = math.sqrt(nextPerfectSquare)
-						-- they're the same but, for readability, calculate both
+						local columns = math.ceil(sqrt)
+						local lines = math.floor(sqrt)
 
 						-- adding a bit so that we have space for the outline and glow; xPad was just to make sure no fonts get cut off
 						local wordwidthpadded = wordwidth + 16
@@ -921,14 +963,20 @@ function love.load(args)
 						love.graphics.clear()
 
 						local x, y, frame = 1, 1, 0
-						for _,w in ipairs(uniquewords) do
+						for _, wordWithNewlines in ipairs(uniquewords) do
 
-							-- i have no idea how this works help
-							local wordx = (x-1)*wordwidthpadded + (wordwidthpadded - preview.font:getWidth(w) - xPad*2 - math.abs(shadowX)) * 0.5 + (wordwidth - preview.font:getWidth(w) - xPad*2 - math.abs(shadowX)) * (wordAlign - 0.5)
-							local wordy = (y-1)*wordheightpadded + (wordheightpadded - wordheight)*0.5
+							local allWords = mysplit(wordWithNewlines, '\n')
 
-							-- draw	
-							drawTextWithOutline(w, preview.font, wordx, wordy)
+							for i,w in ipairs(allWords) do
+
+								-- i have no idea how this works help
+								local wordx = (x-1)*wordwidthpadded + (wordwidthpadded - preview.font:getWidth(w) - xPad*2 - math.abs(shadowX)) * 0.5 + (wordwidth - preview.font:getWidth(w) - xPad*2 - math.abs(shadowX)) * (wordAlign - 0.5)
+								local wordy = (y-1)*wordheightpadded + (wordheightpadded - wordheight)*0.5 + (i-1) * preview.font:getHeight()
+
+								-- draw	
+								drawTextWithOutline(w, preview.font, wordx, wordy)
+
+							end
 
 							-- go to the next frame
 							x = x + 1
@@ -1645,19 +1693,25 @@ function love.load(args)
 			width = 150,
 			height = 50,
 			centered = true,
-			text = 'Import \'font.ttf\'',
+			text = 'Import \'font.ttf\' or \'font.otf\'',
 			onClick = function(b)
 
+				local name = 'font.ttf'
 				local newfont = pcall(love.graphics.newFont, 'font.ttf')
 
 				if not newfont then
+					name = 'font.otf'
+					newfont = pcall(love.graphics.newFont, 'font.otf')
+				end
 
-					fontnotifier.text = 'Couldn\'t find \'font.ttf\' in the working directory!'
+				if not newfont then
+
+					fontnotifier.text = 'Couldn\'t find neither \'font.ttf\' nor \'font.otf\' in the working directory!'
 					fontnotifier.textcolor = {1,0,0}
 
 				else
 
-					preview.font = love.graphics.newFont('font.ttf', fontSize)
+					preview.font = love.graphics.newFont(name, fontSize)
 					preview.textscale = 1
 
 					fontnotifier.text = 'Successfully imported!'
