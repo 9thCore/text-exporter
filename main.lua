@@ -34,6 +34,7 @@ previewrdfont:setFilter("nearest", "nearest")
 outlineColor = {0, 0, 0, 1}
 textColor = {1, 1, 1, 1}
 makeSpritesheet = false
+ignoreDupes = true
 fontSize = 24
 wordAlign = 0.5
 dropShadowAngle = 315
@@ -266,12 +267,14 @@ default = {
 		local origh = t.height
 
 		t.x = t.x + 20
+		t.y = t.y + t.textoffsety
 		t.width = t.width - 20
 		t.height = 0
 
 		default.onDrawText(t)
 
 		t.x = t.x - 20
+		t.y = t.y - t.textoffsety
 		t.width = t.width + 20
 		t.height = origh
 
@@ -594,7 +597,8 @@ function newtick(args)
 	t.onClick = args.onClick or default.onClickTick
 
 	t.side = args.side or 20
-	t.clicked = false
+	t.clicked = args.clicked or false
+	t.textoffsety = args.textoffsety or 0
 
 	return t
 
@@ -905,6 +909,9 @@ function love.load(args)
 
 					else
 
+						local wordusagecount = {}
+						local wordfirstframe = {}
+
 						local sheetWidth = 0
 						local sheetHeight = 0
 
@@ -913,7 +920,7 @@ function love.load(args)
 						local wordwidth = 0
 						local wordheight = 0
 
-						for _,w in ipairs(uniquewords) do
+						for _,w in ipairs(words) do
 
 							wordwidth = math.max(wordwidth, preview.font:getWidth(w))
 
@@ -930,7 +937,7 @@ function love.load(args)
 						local sqrt = math.sqrt(wordcount)
 
 						local columns = math.ceil(sqrt)
-						local lines = math.floor(sqrt)
+						local lines = math.ceil(wordcount / columns)
 
 						-- adding a bit so that we have space for the outline and glow; xPad was just to make sure no fonts get cut off
 						local wordwidthpadded = wordwidth + 16
@@ -963,34 +970,57 @@ function love.load(args)
 						love.graphics.setCanvas(canvas)
 						love.graphics.clear()
 
+						local usedt = uniquewords
+						if not ignoreDupes then
+							usedt = words
+						end
+
 						local x, y, frame = 1, 1, 0
-						for _, wordWithNewlines in ipairs(uniquewords) do
+						for _, wordWithNewlines in ipairs(usedt) do
 
-							local allWords = mysplit('_' .. wordWithNewlines, '\n')
-							allWords[1] = allWords[1]:sub(2, -1)
+							local firstusedframe = false
 
-							for i,w in ipairs(allWords) do
+							local jsonname = wordWithNewlines:gsub('%s+', '_')
+							wordusagecount[jsonname] = (wordusagecount[jsonname] or 0) + 1
 
-								-- i have no idea how this works help
-								local wordx = (x-1)*wordwidthpadded + (wordwidthpadded - preview.font:getWidth(w) - xPad*2 - math.abs(shadowX)) * 0.5 + (wordwidth - preview.font:getWidth(w) - xPad*2 - math.abs(shadowX)) * (wordAlign - 0.5)
-								local wordy = (y-1)*wordheightpadded + (wordheightpadded - wordheight)*0.5 + (i-1) * preview.font:getHeight()
+							if wordusagecount[jsonname] > 1 then
+								firstusedframe = wordfirstframe[jsonname]
+								jsonname = jsonname .. ':' .. tostring(wordusagecount[jsonname])
+							else
+								wordfirstframe[jsonname] = frame
+							end
 
-								-- draw	
-								drawTextWithOutline(w, preview.font, wordx, wordy)
+							if not firstusedframe then
+
+								local allWords = mysplit('_' .. wordWithNewlines, '\n')
+								allWords[1] = allWords[1]:sub(2, -1)
+
+								for i,w in ipairs(allWords) do
+
+									-- i have no idea how this works help
+									local wordx = (x-1)*wordwidthpadded + (wordwidthpadded - preview.font:getWidth(w) - xPad*2 - math.abs(shadowX)) * 0.5 + (wordwidth - preview.font:getWidth(w) - xPad*2 - math.abs(shadowX)) * (wordAlign - 0.5)
+									local wordy = (y-1)*wordheightpadded + (wordheightpadded - wordheight)*0.5 + (i-1) * preview.font:getHeight()
+
+									-- draw	
+									drawTextWithOutline(w, preview.font, wordx, wordy)
+
+								end
+
+								-- go to the next frame
+								x = x + 1
+								if x > columns then
+									x = 1
+									y = y + 1
+								end
 
 							end
 
-							-- go to the next frame
-							x = x + 1
-							if x > columns then
-								x = 1
-								y = y + 1
-							end
+							local usedframe = firstusedframe or frame
 
 							-- save expression
 							jsonT.clips[#jsonT.clips+1] = {
-								name = wordWithNewlines:gsub('%s+', '_'),
-								frames = {frame}, 
+								name = jsonname,
+								frames = {usedframe}, 
 								loop = 'onBeat', 
 								fps = 0, 
 								loopStart = 0, 
@@ -999,7 +1029,11 @@ function love.load(args)
 								portraitScale = 2
 							}
 
-							frame = frame + 1
+							if not firstusedframe then
+								frame = frame + 1
+							end
+
+							print(jsonname, firstusedframe, usedframe, frame)
 
 						end
 
@@ -1229,7 +1263,7 @@ function love.load(args)
 
 		newtick{
 			x = 1350, 
-			y = 200, 
+			y = 120, 
 			width = 250,
 			height = 100,
 			text = 'Make spritesheet', 
@@ -1240,6 +1274,24 @@ function love.load(args)
 			onClick = function(t)
 				t.clicked = not t.clicked 
 				makeSpritesheet = t.clicked
+			end
+		}
+
+		newtick{
+			x = 1350, 
+			y = 200, 
+			width = 250,
+			height = 100,
+			text = 'Ignore duplicates in spritesheet',
+			textscale = 1, 
+			textoffsety = 30,
+			clicked = true,
+			touchTest = function(x, y, t)
+				return touching(x, y, t.x, t.y, t.x + t.width, t.y + t.height/2)
+			end, 
+			onClick = function(t)
+				t.clicked = not t.clicked 
+				ignoreDupes = t.clicked
 			end
 		}
 
