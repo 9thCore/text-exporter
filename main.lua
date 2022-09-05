@@ -16,7 +16,7 @@ https://github.com/rxi/json.lua
 
 ]]
 
-_EXPORTERVERSION = '1.1'
+_EXPORTERVERSION = '1.2'
 
 -- variables
 min = math.min
