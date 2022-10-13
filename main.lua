@@ -610,6 +610,10 @@ function updateFontSize(size)
 	if preview.font ~= previewrdfont then -- custom font
 		local res, font = pcall(love.graphics.newFont, 'font.ttf', size)
 		if not res then
+			res, font = pcall(love.graphics.newFont, 'font.otf', size)
+		end
+		
+		if not res then
 			fontnotifier.text = 'Couldn\'t find font!'
 			fontnotifier.textcolor = {1,0,0}
 
@@ -769,7 +773,7 @@ function love.load(args)
 						print('Found ' .. #words .. ' words.')
 
 						lyricsnotifier.textcolor = {0,1,0}
-						lyricsnotifier.text = 'Sucessfully loaded!'
+						lyricsnotifier.text = 'Successfully loaded!'
 						lyricsnotifier.y = 300
 
 						startbutton:newState(true)
@@ -1033,7 +1037,7 @@ function love.load(args)
 								frame = frame + 1
 							end
 
-							print(jsonname, firstusedframe, usedframe, frame)
+							-- print(jsonname, firstusedframe, usedframe, frame)
 
 						end
 
@@ -1127,7 +1131,7 @@ function love.load(args)
 
 					end
 
-					logger.text = 'Sucessfully exported ' .. #words .. ' word' .. ((#words > 1 and 's') or '') .. '!'
+					logger.text = 'Successfully exported ' .. #words .. ' word' .. ((#words > 1 and 's') or '') .. '!'
 					logger.textcolor = {1.5, 1.5, 1.5}
 
 					print('Done!')
