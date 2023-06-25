@@ -16,7 +16,7 @@ https://github.com/rxi/json.lua
 
 ]]
 
-_EXPORTERVERSION = '1.2'
+_EXPORTERVERSION = '1.3'
 
 -- variables
 min = math.min
@@ -674,6 +674,7 @@ function love.load(args)
 			onClick = function(o)
 
 				words = {}
+				uniquewords = {}
 
 				local contents, size = love.filesystem.read('lyrics.txt')
 
@@ -878,6 +879,7 @@ function love.load(args)
 
 					end
 
+					local usedt = words
 					if not makeSpritesheet then
 
 						for i=1,#words do
@@ -974,7 +976,7 @@ function love.load(args)
 						love.graphics.setCanvas(canvas)
 						love.graphics.clear()
 
-						local usedt = uniquewords
+						usedt = uniquewords
 						if not ignoreDupes then
 							usedt = words
 						end
@@ -1131,7 +1133,7 @@ function love.load(args)
 
 					end
 
-					logger.text = 'Successfully exported ' .. #words .. ' word' .. ((#words > 1 and 's') or '') .. '!'
+					logger.text = 'Successfully exported ' .. #usedt .. ' word' .. ((#usedt > 1 and 's') or '') .. '!'
 					logger.textcolor = {1.5, 1.5, 1.5}
 
 					print('Done!')
